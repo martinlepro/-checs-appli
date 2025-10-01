@@ -1,1 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Bot Client</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+    <div class="container">
+        <h1>Jouer contre le Bot (Render/FastAPI)</h1>
+        
+        <div id="setup-section" class="card">
+            <h2>Nouvelle Partie</h2>
+            <form id="new-game-form">
+                <label for="player_id">Votre ID de Joueur (Ex: MonSuperID) :</label>
+                <input type="text" id="player_id" value="MonSuperID" required><br><br>
+
+                <label for="bot_level">Niveau du Bot (Elo) :</label>
+                <select id="bot_level" required>
+                    <option value="250" data-icon="icon_bot_250.png">Faible (250 Elo)</option>
+                    <option value="1500" data-icon="icon_bot_1500.png" selected>Moyen (1500 Elo)</option>
+                    <option value="3000" data-icon="icon_bot_3000.png">Fort (3000 Elo)</option>
+                </select><br><br>
+                
+                <button type="submit">Démarrer la Partie</button>
+            </form>
+        </div>
+
+        <div id="game-section" class="card" style="display: none;">
+            <div id="player-info" class="player-bar bot">
+                <img id="bot-icon" src="" alt="Bot Icon" width="40" height="40">
+                <span id="bot-name">Bot (1500 Elo)</span>
+            </div>
+            
+            <div id="board" style="width: 400px"></div>
+            
+            <div id="player-info" class="player-bar human">
+                <span id="human-name">MonSuperID</span>
+                </div>
+
+            <div id="game-status"></div>
+            <button id="reset-button" style="display: none;">Nouvelle Partie</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/chess.js@1.0.0-beta.6/dist/chess.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    
+    <script src="app.js"></script>
+
+</body>
+</html>
