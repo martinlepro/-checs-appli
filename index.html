@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Bot Client</title>
+    <title>Chess Bot Client - FastAPI/Render</title>
     
+    <!-- CSS de chessboard.js -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <!-- Notre style personnalisé -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,44 +15,58 @@
     <div class="container">
         <h1>Jouer contre le Bot (Render/FastAPI)</h1>
         
+        <!-- Section pour démarrer une nouvelle partie -->
         <div id="setup-section" class="card">
             <h2>Nouvelle Partie</h2>
+            <p class="mb-4">URL de l'API : <span id="server-url"></span></p>
             <form id="new-game-form">
                 <label for="player_id">Votre ID de Joueur (Ex: MonSuperID) :</label>
                 <input type="text" id="player_id" value="MonSuperID" required><br><br>
 
                 <label for="bot_level">Niveau du Bot (Elo) :</label>
                 <select id="bot_level" required>
-                    <option value="250" data-icon="icon_bot_250.png">Faible (250 Elo)</option>
-                    <option value="1500" data-icon="icon_bot_1500.png" selected>Moyen (1500 Elo)</option>
-                    <option value="3000" data-icon="icon_bot_3000.png">Fort (3000 Elo)</option>
+                    <option value="250" data-icon="icon_bot_250.png">Faible (250 Elo) [Amateur]</option>
+                    <option value="1500" data-icon="icon_bot_1500.png" selected>Moyen (1500 Elo) [Joueur de club]</option>
+                    <option value="3000" data-icon="icon_bot_3000.png">Fort (3000 Elo) [Grand Maître]</option>
                 </select><br><br>
                 
                 <button type="submit">Démarrer la Partie</button>
             </form>
         </div>
 
+        <!-- Section de jeu (cachée au début) -->
         <div id="game-section" class="card" style="display: none;">
-            <div id="player-info" class="player-bar bot">
-                <img id="bot-icon" src="" alt="Bot Icon" width="40" height="40">
-                <span id="bot-name">Bot (1500 Elo)</span>
+            <!-- Barre du Bot (Noir) -->
+            <div class="player-bar bot">
+                <!-- Utilisez l'attribut onerror au cas où l'icône PNG ne serait pas trouvée -->
+                <img id="bot-icon" src="" onerror="this.onerror=null; this.src='assets/placeholder_bot.png'" alt="Bot Icon" width="40" height="40">
+                <span id="bot-name"></span>
             </div>
             
-            <div id="board" style="width: 400px"></div>
+            <div id="board" style="width: 100%; max-width: 400px; margin: 20px auto;"></div>
             
-            <div id="player-info" class="player-bar human">
-                <span id="human-name">MonSuperID</span>
-                </div>
+            <!-- Barre du Joueur (Blanc) -->
+            <div class="player-bar human">
+                <span id="human-name"></span>
+                <img id="human-icon" src="assets/human_icon.png" onerror="this.onerror=null; this.src='assets/placeholder_human.png'" alt="Human Icon" width="40" height="40">
+            </div>
 
             <div id="game-status"></div>
             <button id="reset-button" style="display: none;">Nouvelle Partie</button>
         </div>
+        
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Le bot réfléchit...</p>
+        </div>
     </div>
 
+    <!-- Dépendances JS -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://unpkg.com/chess.js@1.0.0-beta.6/dist/chess.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     
+    <!-- Notre logique d'application -->
     <script src="app.js"></script>
 
 </body>
