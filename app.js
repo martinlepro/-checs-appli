@@ -1,12 +1,15 @@
-// URL de votre service FastAPI déployé sur Render
+// URL de votre service FastAPI déployé sur Render.
+// ASSUREZ-VOUS DE REMPLACER CECI PAR VOTRE VRAIE URL DE DÉPLOIEMENT
 const SERVER_URL = 'https://echecs-serveur.onrender.com';
 
-// État de l'application
+// --- État de l'application ---
 let board = null;
 let game = new Chess();
 let gameId = null;
 let playerId = null;
+let botLevel = 1500;
 let isBotPlaying = false; // Flag pour bloquer les coups pendant que le bot réfléchit
+let moveAttempt = null; // Stocke le coup tenté pour le snapback en cas d'erreur API
 
 const config = {
     draggable: true,
@@ -14,119 +17,139 @@ const config = {
     onDragStart: onDragStart,
     onDrop: onDrop,
     onSnapEnd: onSnapEnd,
-    // Joueur humain est toujours les Blancs
-    orientation: 'white' 
+    onMoveEnd: onMoveEnd,
+    orientation: 'white' // L'humain est toujours les Blancs
 };
 
-// Initialisation au chargement de la page
+// --- Initialisation ---
+
 $(document).ready(function() {
-    // Initialise le plateau sans pièces au début
+    $('#server-url').text(SERVER_URL);
     board = Chessboard('board', config);
     $('#new-game-form').on('submit', startNewGame);
     $('#reset-button').on('click', resetApp);
-    updateStatus();
+    
+    // Assurez-vous que le plateau s'adapte à la taille de la fenêtre
+    $(window).on('resize', board.resize);
+    updateStatus("Prêt à commencer. Entrez votre ID et le niveau du bot.");
 });
 
-// --- Fonctions d'interaction avec le plateau ---
+// --- Gestion des Événements du Plateau ---
 
 function onDragStart (source, piece, position, orientation) {
-    // N'autorise pas le mouvement si la partie est terminée ou si ce n'est pas le tour des Blancs
+    // Si la partie est terminée, ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
     if (game.isGameOver() || isBotPlaying || game.turn() === 'b') {
         return false;
     }
-    // N'autorise que le déplacement des pièces blanches (l'humain est toujours Blanc ici)
+    // L'humain ne peut bouger que les pièces blanches
     if (piece.search(/^b/) !== -1) {
         return false;
     }
 }
 
 async function onDrop (source, target) {
-    // Tente de faire le coup localement
-    const move = game.move({
+    moveAttempt = {
         from: source,
         to: target,
         promotion: 'q' // Simplifie la promotion en Reines par défaut
-    });
-
-    // Coup illégal
-    if (move === null) {
+    };
+    
+    // Tente de faire le coup localement pour la validation immédiate
+    const temp_move = game.move(moveAttempt);
+    
+    // Coup illégal selon chess.js
+    if (temp_move === null) {
         return 'snapback';
     }
+    
+    // Le coup est légal localement, mais nous attendons la confirmation du serveur
+    game.undo(); // Annule le coup local pour le faire uniquement après la confirmation du serveur
 
-    // Le coup est légal, donc on l'envoie au serveur
+    // Envoyer le coup au serveur
     try {
         isBotPlaying = true; // Bloque le plateau
-        updateStatus("En attente de la réponse du serveur...");
+        $('#loading-overlay').show(); // Affiche l'indicateur de chargement
+        updateStatus("Envoi du coup au serveur et attente de la réponse du bot...");
 
-        // 1. Envoi du coup au serveur
+        // 1. Envoi du coup joueur au serveur
         const response = await fetch(`${SERVER_URL}/game/move`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 game_id: gameId,
                 player_id: playerId,
-                uci_move: move.uci
+                uci_move: temp_move.uci
             })
         });
 
         if (!response.ok) {
-            // Si le serveur a renvoyé une erreur (ex: coup illégal côté serveur)
             const errorData = await response.json();
             throw new Error(errorData.detail || "Erreur inconnue du serveur.");
         }
 
         const data = await response.json();
         
-        // 2. Mise à jour de l'état local avec la réponse du serveur
-        game.load(data.new_fen);
-        updateStatus();
-
-        // 3. Animation du coup du bot (si présent)
+        // 2. Exécution du coup du joueur (confirmé)
+        game.move(temp_move);
+        board.position(game.fen()); // Mise à jour du plateau pour le coup humain
+        
+        // 3. Animation et exécution du coup du bot (si présent)
         if (data.bot_move) {
-            // Le bot joue, nous devons mettre à jour l'affichage
-            setTimeout(() => {
-                board.move(data.bot_move); // Anime le coup du bot
-                isBotPlaying = false; // Débloque le plateau après le coup du bot
-                updateStatus();
-            }, 500); // Petite pause pour l'effet
-        } else {
-            // S'il n'y a pas de coup de bot (ex: partie multijoueur future ou fin de partie)
-            isBotPlaying = false;
+            // Le coup du bot arrive déjà, on le joue immédiatement
+            const bot_move = game.move(data.bot_move);
+            if (bot_move === null) {
+                console.error("Le serveur a retourné un coup illégal pour le bot:", data.bot_move);
+                // On laisse le jeu dans l'état après le coup humain pour la détection du problème
+            }
+            // board.move(data.bot_move) va appeler onSnapEnd
         }
+        
+        // Mise à jour finale du plateau et du statut
+        board.position(game.fen());
+        $('#loading-overlay').hide();
+        updateStatus();
+        isBotPlaying = false;
 
     } catch (error) {
         console.error('Erreur lors de l’envoi du coup au serveur:', error);
-        // Annule le coup local pour l'utilisateur
-        game.undo();
-        board.position(game.fen());
-        updateStatus(`Erreur: ${error.message}. Réessayez.`);
+        
+        // Le coup est refusé par le serveur : restaure l'ancienne position
+        board.position(game.fen(), false); // 'false' force un snapback
+        $('#loading-overlay').hide();
+        updateStatus(`Erreur du serveur: ${error.message}.`);
         isBotPlaying = false;
+        
+        // Retourne 'snapback' pour faire revenir la pièce à sa place initiale visuellement
         return 'snapback';
     }
 }
 
-// Fonction appelée après l'animation de fin de coup (repositionnement)
 function onSnapEnd () {
+    // Cette fonction est appelée après l'animation. C'est l'endroit idéal
+    // pour s'assurer que le plateau visuel correspond au FEN logique.
     board.position(game.fen());
 }
 
-// --- Fonctions d'interaction avec le serveur ---
+function onMoveEnd() {
+    // S'assurer que le plateau est mis à jour après un move() programmé (comme le bot)
+    board.position(game.fen());
+}
+
+// --- Fonctions d'Interaction avec le Serveur ---
 
 async function startNewGame(event) {
     event.preventDefault();
     
     playerId = $('#player_id').val();
-    const botLevel = parseInt($('#bot_level').val());
+    botLevel = parseInt($('#bot_level').val());
+    const selectedBot = $('#bot_level option:selected');
+    const botIconPath = 'assets/bot_icons/' + selectedBot.data('icon');
     
     try {
         // Envoi de la requête pour créer une nouvelle partie
         const response = await fetch(`${SERVER_URL}/game/new`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 player_white_id: playerId,
                 opponent_type: 'bot',
@@ -141,17 +164,14 @@ async function startNewGame(event) {
 
         const data = await response.json();
         gameId = data.game_id;
-        game.reset(); // Réinitialise la logique de jeu locale
-        board.position(data.initial_fen); // Affiche le plateau initial
+        game.reset(); 
+        board.position(data.initial_fen); 
         
-        // Affiche la section de jeu et masque la section de configuration
+        // Mise à jour de l'affichage de l'interface
         $('#setup-section').hide();
         $('#game-section').show();
         
         // Mise à jour des informations joueur/bot
-        const selectedBot = $('#bot_level option:selected');
-        const botIconPath = 'assets/bot_icons/' + selectedBot.data('icon');
-        
         $('#bot-icon').attr('src', botIconPath);
         $('#bot-name').text(`Bot (${botLevel} Elo)`);
         $('#human-name').text(playerId);
@@ -160,7 +180,8 @@ async function startNewGame(event) {
 
     } catch (error) {
         console.error('Erreur lors du démarrage de la partie:', error);
-        alert(`Impossible de démarrer la partie. Vérifiez le serveur : ${error.message}`);
+        alert(`Impossible de démarrer la partie. Veuillez vérifier la console et l'URL du serveur: ${SERVER_URL}`);
+        resetApp();
     }
 }
 
@@ -171,6 +192,8 @@ function resetApp() {
     $('#setup-section').show();
     $('#game-section').hide();
     $('#reset-button').hide();
+    isBotPlaying = false;
+    updateStatus("Prêt à commencer une nouvelle partie.");
 }
 
 
@@ -178,7 +201,7 @@ function resetApp() {
 
 function updateStatus (message = null) {
     if (message) {
-        $('#game-status').html(`<span style="color: blue;">${message}</span>`);
+        $('#game-status').html(`<span style="color: #c0392b;">${message}</span>`);
         return;
     }
     
@@ -198,9 +221,9 @@ function updateStatus (message = null) {
     } else {
         status = `C'est au tour des ${moveColor} de jouer.`;
         if (game.isCheck()) {
-            status += ` (${moveColor} est en échec)`;
+            status = `<span style="color: #e67e22;">${status} (ATTENTION : Échec !)</span>`;
         }
     }
 
-    $('#game-status').text(status);
-                                                                         }
+    $('#game-status').html(status);
+}
