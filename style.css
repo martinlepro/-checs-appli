@@ -1,7 +1,7 @@
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    color: #333;
+    font-family: 'Inter', Arial, sans-serif;
+    background-color: #e9eef2; /* Couleur de fond plus douce */
+    color: #2c3e50;
     margin: 0;
     padding: 20px;
     display: flex;
@@ -14,56 +14,133 @@ body {
 .container {
     background: white;
     padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     text-align: center;
+    width: 90%;
+    max-width: 450px;
+}
+
+h1 {
+    color: #2980b9;
+    font-size: 1.5em;
+    margin-bottom: 20px;
 }
 
 .card {
     margin: 20px 0;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 20px;
+    border: 1px solid #bdc3c7;
+    border-radius: 8px;
+    background-color: #ecf0f1;
 }
 
-#board {
-    margin: 20px auto;
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+input[type="text"], select {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 80%;
+}
+
+button {
+    background-color: #3498db;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 700;
+    transition: background-color 0.3s, transform 0.1s;
+    box-shadow: 0 4px #2980b9;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+button:active {
+    background-color: #2980b9;
+    box-shadow: 0 2px #2980b9;
+    transform: translateY(2px);
 }
 
 #game-status {
     margin-top: 20px;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 1.1em;
-    min-height: 25px; /* Pour éviter le saut de mise en page */
-}
-
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 20px;
-    border: none;
+    min-height: 25px;
+    padding: 10px;
     border-radius: 4px;
-    cursor: pointer;
-    font-size: 1em;
-    margin-top: 10px;
-}
-
-button:hover {
-    background-color: #45a049;
 }
 
 /* Style pour l'affichage du joueur/bot */
 .player-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 5px;
+    padding: 5px 15px;
     font-size: 1.1em;
     font-weight: bold;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.player-bar.bot {
+    justify-content: flex-end; /* Bot à droite (Noir) */
+    background-color: #34495e;
+    color: white;
+    flex-direction: row-reverse;
+}
+
+.player-bar.human {
+    justify-content: flex-start; /* Humain à gauche (Blanc) */
+    background-color: #f1c40f;
+    color: #2c3e50;
 }
 
 .player-bar img {
-    margin-right: 10px;
+    margin: 0 10px;
     border-radius: 50%;
-    border: 2px solid #333;
+    border: 2px solid white;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Overlay de chargement (Bot réfléchit) */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #3498db;
+}
+
+.spinner {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
