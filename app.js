@@ -1,3 +1,7 @@
+window.onerror = function(msg, url, line, col, error) {
+  document.getElementById('debug').textContent =
+    "Erreur JS : " + msg + "\nLigne: " + line + "\n" + (error ? error.stack : "");
+};
 // URL de votre service FastAPI déployé sur Render.
 // ASSUREZ-VOUS DE REMPLACER CECI PAR VOTRE VRAIE URL DE DÉPLOIEMENT
 const SERVER_URL = 'https://echecs-serveur.onrender.com';
