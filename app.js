@@ -94,6 +94,7 @@ $(document).ready(function() {
     console.log("Initialisation de l'application cliente...");
     $('#server-url').text(SERVER_URL);
     board = Chessboard('board', config);
+    board.resize(); // <-- NOUVELLE LIGNE : Force le redimensionnement du plateau à l'initialisation
     
     // Assurez-vous que l'écouteur d'événement est bien attaché
     $('#new-game-form').on('submit', startNewGame);
@@ -110,7 +111,7 @@ $(document).ready(function() {
 function onDragStart (source, piece, position, orientation) {
     console.log(`Début du glisser-déposer: ${piece} de ${source}`);
     // Si la partie est terminée (correction), ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
-    if (game.game_over() || isBotPlaying || game.turn() === 'b') { // <-- CORRECTION ICI
+    if (game.game_over() || isBotPlaying || game.turn() === 'b') {
         console.warn("Mouvement interdit: partie terminée, bot joue, ou ce n'est pas le tour des Blancs.");
         return false;
     }
@@ -147,17 +148,19 @@ async function onDrop (source, target) {
         isBotPlaying = true; // Bloque le plateau
         $('#loading-overlay').show(); // Affiche l'indicateur de chargement
         updateStatus("Envoi du coup au serveur et attente de la réponse du bot...");
-        console.log("Envoi du coup joueur au serveur...", { game_id: gameId, player_id: playerId, uci_move: temp_move.uci });
+
+        const requestBody = { // <-- NOUVEAU : Log le corps de la requête
+            game_id: gameId,
+            player_id: playerId,
+            uci_move: temp_move.uci
+        };
+        console.log("Corps de la requête POST /game/move envoyé :", requestBody);
 
         // 1. Envoi du coup joueur au serveur
         const response = await fetch(`${SERVER_URL}/game/move`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                game_id: gameId,
-                player_id: playerId,
-                uci_move: temp_move.uci
-            })
+            body: JSON.stringify(requestBody) // Utilise le corps loggué
         });
 
         if (!response.ok) {
@@ -267,7 +270,7 @@ async function startNewGame(event) {
 
     } catch (error) {
         console.error('Erreur irrécupérable lors du démarrage de la partie:', error);
-        alert(`Impossible de démarrer la partie. Vérifiez la console (F12) et l'URL du serveur: ${SERVER_URL}`);
+        alert(`Impossible de démarrer la partie. Vérifiez les logs sur l'écran ou la console (F12) et l'URL du serveur: ${SERVER_URL}`);
         resetApp();
     }
 }
@@ -302,17 +305,17 @@ function updateStatus (message = null) {
     }
 
     // CORRECTIONS ICI
-    if (game.in_checkmate()) { // <-- CORRECTION ICI
+    if (game.in_checkmate()) {
         status = 'PARTIE TERMINÉE : ' + moveColor + ' est en échec et mat.';
         $('#reset-button').show();
         console.log("Partie terminée: Échec et mat !");
-    } else if (game.in_draw()) { // <-- CORRECTION ICI
+    } else if (game.in_draw()) {
         status = 'PARTIE TERMINÉE : Nulle.';
         $('#reset-button').show();
         console.log("Partie terminée: Nulle !");
     } else {
         status = `C'est au tour des ${moveColor} de jouer.`;
-        if (game.in_check()) { // <-- CORRECTION ICI
+        if (game.in_check()) {
             status = `<span style="color: #e67e22;">${status} (ATTENTION : Échec !)</span>`;
             console.warn("Partie en cours: Le joueur actuel est en échec !");
         } else {
