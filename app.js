@@ -109,8 +109,8 @@ $(document).ready(function() {
 
 function onDragStart (source, piece, position, orientation) {
     console.log(`Début du glisser-déposer: ${piece} de ${source}`);
-    // Si la partie est terminée, ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
-    if (game.isGameOver() || isBotPlaying || game.turn() === 'b') {
+    // Si la partie est terminée (correction), ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
+    if (game.game_over() || isBotPlaying || game.turn() === 'b') { // <-- CORRECTION ICI
         console.warn("Mouvement interdit: partie terminée, bot joue, ou ce n'est pas le tour des Blancs.");
         return false;
     }
@@ -301,17 +301,18 @@ function updateStatus (message = null) {
         moveColor = 'Noirs';
     }
 
-    if (game.isCheckmate()) {
+    // CORRECTIONS ICI
+    if (game.in_checkmate()) { // <-- CORRECTION ICI
         status = 'PARTIE TERMINÉE : ' + moveColor + ' est en échec et mat.';
         $('#reset-button').show();
         console.log("Partie terminée: Échec et mat !");
-    } else if (game.isDraw()) {
+    } else if (game.in_draw()) { // <-- CORRECTION ICI
         status = 'PARTIE TERMINÉE : Nulle.';
         $('#reset-button').show();
         console.log("Partie terminée: Nulle !");
     } else {
         status = `C'est au tour des ${moveColor} de jouer.`;
-        if (game.isCheck()) {
+        if (game.in_check()) { // <-- CORRECTION ICI
             status = `<span style="color: #e67e22;">${status} (ATTENTION : Échec !)</span>`;
             console.warn("Partie en cours: Le joueur actuel est en échec !");
         } else {
