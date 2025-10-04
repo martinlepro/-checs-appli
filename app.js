@@ -6,11 +6,14 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 // Function to append message to the debug div
+// Function to append message to the debug div
 function appendToDebugDiv(type, message, ...optionalParams) {
   const debugDiv = document.getElementById('debug');
   if (debugDiv) {
-    // Format the message and optional parameters
-    const formattedMessage = [message, ...optionalParams].map(param => {
+    const formatParam = (param) => {
+      if (param instanceof Error) { // <--- C'est la modification clé ici
+        return `Error: ${param.message}\nStack: ${param.stack || 'No stack available'}`;
+      }
       if (typeof param === 'object' && param !== null) {
         try {
           return JSON.stringify(param, null, 2); // Pretty print objects
@@ -19,7 +22,24 @@ function appendToDebugDiv(type, message, ...optionalParams) {
         }
       }
       return String(param);
-    }).join(' ');
+    };
+
+    const formattedMessage = [message, ...optionalParams].map(formatParam).join(' ');
+
+    const line = document.createElement('div');
+    // Basic styling for different log types
+    line.style.color = type === 'error' ? 'red' : (type === 'warn' ? 'orange' : 'white');
+    line.style.borderBottom = '1px solid #333'; // Add a separator for readability
+    line.style.padding = '5px 0';
+    line.style.whiteSpace = 'pre-wrap'; // Preserve formatting
+    line.style.wordBreak = 'break-all'; // Break long words
+
+    line.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${formattedMessage}`;
+    debugDiv.appendChild(line);
+    debugDiv.scrollTop = debugDiv.scrollHeight; // Auto-scroll to bottom
+  }
+}
+
 
     const line = document.createElement('div');
     // Basic styling for different log types
