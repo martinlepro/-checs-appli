@@ -1,7 +1,68 @@
-window.onerror = function(msg, url, line, col, error) {
-  document.getElementById('debug').textContent =
-    "Erreur JS : " + msg + "\nLigne: " + line + "\n" + (error ? error.stack : "");
+// --- Début du code de redirection du console ---
+
+// Preserve original console functions
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+// Function to append message to the debug div
+function appendToDebugDiv(type, message, ...optionalParams) {
+  const debugDiv = document.getElementById('debug');
+  if (debugDiv) {
+    // Format the message and optional parameters
+    const formattedMessage = [message, ...optionalParams].map(param => {
+      if (typeof param === 'object' && param !== null) {
+        try {
+          return JSON.stringify(param, null, 2); // Pretty print objects
+        } catch (e) {
+          return String(param); // Fallback for circular references etc.
+        }
+      }
+      return String(param);
+    }).join(' ');
+
+    const line = document.createElement('div');
+    // Basic styling for different log types
+    line.style.color = type === 'error' ? 'red' : (type === 'warn' ? 'orange' : 'white');
+    line.style.borderBottom = '1px solid #333'; // Add a separator for readability
+    line.style.padding = '5px 0';
+    line.style.whiteSpace = 'pre-wrap'; // Preserve formatting
+    line.style.wordBreak = 'break-all'; // Break long words
+
+    line.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${formattedMessage}`;
+    debugDiv.appendChild(line);
+    debugDiv.scrollTop = debugDiv.scrollHeight; // Auto-scroll to bottom
+  }
+}
+
+// Override console methods to redirect to the debug div
+console.log = function(message, ...optionalParams) {
+  appendToDebugDiv('log', message, ...optionalParams);
+  // Uncomment the line below if you still want messages to appear in the browser console
+  // originalConsoleLog(message, ...optionalParams);
 };
+
+console.warn = function(message, ...optionalParams) {
+  appendToDebugDiv('warn', message, ...optionalParams);
+  // Uncomment the line below if you still want messages to appear in the browser console
+  // originalConsoleWarn(message, ...optionalParams);
+};
+
+console.error = function(message, ...optionalParams) {
+  appendToDebugDiv('error', message, ...optionalParams);
+  // Uncomment the line below if you still want messages to appear in the browser console
+  // originalConsoleError(message, ...optionalParams);
+};
+
+// Existing window.onerror for uncaught JS errors, now also redirected
+window.onerror = function(msg, url, line, col, error) {
+  const errorText = `Erreur JS : ${msg}\nLigne: ${line}\nCol: ${col}\nURL: ${url}\n${error ? error.stack : ""}`;
+  appendToDebugDiv('error', errorText);
+  return true; // Prevent default browser error handling (e.g., console logging)
+};
+
+// --- Fin du code de redirection du console ---
+
 // URL de votre service FastAPI déployé sur Render.
 // ASSUREZ-VOUS DE REMPLACER CECI PAR VOTRE VRAIE URL DE DÉPLOIEMENT
 const SERVER_URL = 'https://echecs-serveur.onrender.com';
@@ -28,6 +89,7 @@ const config = {
 // --- Initialisation ---
 
 $(document).ready(function() {
+    console.log("Initialisation de l'application...");
     $('#server-url').text(SERVER_URL);
     board = Chessboard('board', config);
     $('#new-game-form').on('submit', startNewGame);
@@ -36,22 +98,27 @@ $(document).ready(function() {
     // Assurez-vous que le plateau s'adapte à la taille de la fenêtre
     $(window).on('resize', board.resize);
     updateStatus("Prêt à commencer. Entrez votre ID et le niveau du bot.");
+    console.log("Application prête.");
 });
 
 // --- Gestion des Événements du Plateau ---
 
 function onDragStart (source, piece, position, orientation) {
+    console.log(`Début du glisser-déposer: ${piece} de ${source}`);
     // Si la partie est terminée, ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
     if (game.isGameOver() || isBotPlaying || game.turn() === 'b') {
+        console.warn("Mouvement interdit: partie terminée, bot joue, ou ce n'est pas le tour des Blancs.");
         return false;
     }
     // L'humain ne peut bouger que les pièces blanches
     if (piece.search(/^b/) !== -1) {
+        console.warn("Mouvement interdit: l'humain ne peut bouger que les pièces blanches.");
         return false;
     }
 }
 
 async function onDrop (source, target) {
+    console.log(`Coup tenté: de ${source} à ${target}`);
     moveAttempt = {
         from: source,
         to: target,
@@ -63,17 +130,20 @@ async function onDrop (source, target) {
     
     // Coup illégal selon chess.js
     if (temp_move === null) {
+        console.error("Coup illégal détecté localement par chess.js. Retour à la position.");
         return 'snapback';
     }
     
     // Le coup est légal localement, mais nous attendons la confirmation du serveur
     game.undo(); // Annule le coup local pour le faire uniquement après la confirmation du serveur
+    console.log("Coup localement valide, annulation temporaire pour envoi au serveur.");
 
     // Envoyer le coup au serveur
     try {
         isBotPlaying = true; // Bloque le plateau
         $('#loading-overlay').show(); // Affiche l'indicateur de chargement
         updateStatus("Envoi du coup au serveur et attente de la réponse du bot...");
+        console.log("Envoi du coup joueur au serveur...", { game_id: gameId, player_id: playerId, uci_move: temp_move.uci });
 
         // 1. Envoi du coup joueur au serveur
         const response = await fetch(`${SERVER_URL}/game/move`, {
@@ -88,18 +158,21 @@ async function onDrop (source, target) {
 
         if (!response.ok) {
             const errorData = await response.json();
+            console.error("Erreur réponse serveur lors de l'envoi du coup:", errorData);
             throw new Error(errorData.detail || "Erreur inconnue du serveur.");
         }
 
         const data = await response.json();
+        console.log("Réponse du serveur reçue:", data);
         
         // 2. Exécution du coup du joueur (confirmé)
         game.move(temp_move);
         board.position(game.fen()); // Mise à jour du plateau pour le coup humain
+        console.log(`Coup humain (${temp_move.uci}) exécuté et confirmé.`);
         
         // 3. Animation et exécution du coup du bot (si présent)
         if (data.bot_move) {
-            // Le coup du bot arrive déjà, on le joue immédiatement
+            console.log(`Coup du bot reçu: ${data.bot_move}`);
             const bot_move = game.move(data.bot_move);
             if (bot_move === null) {
                 console.error("Le serveur a retourné un coup illégal pour le bot:", data.bot_move);
@@ -113,9 +186,10 @@ async function onDrop (source, target) {
         $('#loading-overlay').hide();
         updateStatus();
         isBotPlaying = false;
+        console.log("Tour terminé, bot a joué (si applicable).");
 
     } catch (error) {
-        console.error('Erreur lors de l’envoi du coup au serveur:', error);
+        console.error('Erreur lors de l’envoi du coup au serveur ou traitement:', error);
         
         // Le coup est refusé par le serveur : restaure l'ancienne position
         board.position(game.fen(), false); // 'false' force un snapback
@@ -129,13 +203,12 @@ async function onDrop (source, target) {
 }
 
 function onSnapEnd () {
-    // Cette fonction est appelée après l'animation. C'est l'endroit idéal
-    // pour s'assurer que le plateau visuel correspond au FEN logique.
+    console.log("Animation de déplacement de pièce terminée.");
     board.position(game.fen());
 }
 
 function onMoveEnd() {
-    // S'assurer que le plateau est mis à jour après un move() programmé (comme le bot)
+    console.log("Événement onMoveEnd déclenché.");
     board.position(game.fen());
 }
 
@@ -149,6 +222,8 @@ async function startNewGame(event) {
     const selectedBot = $('#bot_level option:selected');
     const botIconPath = 'assets/bot_icons/' + selectedBot.data('icon');
     
+    console.log(`Tentative de démarrage d'une nouvelle partie. Joueur: ${playerId}, Bot Elo: ${botLevel}`);
+
     try {
         // Envoi de la requête pour créer une nouvelle partie
         const response = await fetch(`${SERVER_URL}/game/new`, {
@@ -163,6 +238,7 @@ async function startNewGame(event) {
 
         if (!response.ok) {
              const errorData = await response.json();
+             console.error("Erreur réponse serveur lors de la création de partie:", errorData);
              throw new Error(errorData.detail || "Échec de la création de partie.");
         }
 
@@ -181,6 +257,7 @@ async function startNewGame(event) {
         $('#human-name').text(playerId);
 
         updateStatus("Partie commencée ! C'est le tour des Blancs.");
+        console.log(`Partie ${gameId} créée avec succès. FEN initial: ${data.initial_fen}`);
 
     } catch (error) {
         console.error('Erreur lors du démarrage de la partie:', error);
@@ -190,6 +267,7 @@ async function startNewGame(event) {
 }
 
 function resetApp() {
+    console.log("Réinitialisation de l'application.");
     gameId = null;
     game.reset();
     board.position('start');
@@ -205,6 +283,7 @@ function resetApp() {
 
 function updateStatus (message = null) {
     if (message) {
+        console.log("Mise à jour du statut avec message spécifique:", message);
         $('#game-status').html(`<span style="color: #c0392b;">${message}</span>`);
         return;
     }
@@ -219,13 +298,18 @@ function updateStatus (message = null) {
     if (game.isCheckmate()) {
         status = 'PARTIE TERMINÉE : ' + moveColor + ' est en échec et mat.';
         $('#reset-button').show();
+        console.log("Partie terminée: Échec et mat.");
     } else if (game.isDraw()) {
         status = 'PARTIE TERMINÉE : Nulle.';
         $('#reset-button').show();
+        console.log("Partie terminée: Nulle.");
     } else {
         status = `C'est au tour des ${moveColor} de jouer.`;
         if (game.isCheck()) {
             status = `<span style="color: #e67e22;">${status} (ATTENTION : Échec !)</span>`;
+            console.log("Partie en cours: Échec !");
+        } else {
+            console.log("Partie en cours.");
         }
     }
 
