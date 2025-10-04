@@ -26,9 +26,18 @@
 
                 <label for="bot_level">Niveau du Bot (Elo) :</label>
                 <select id="bot_level" required>
-                    <option value="250" data-icon="icon_bot_250.png">Faible (250 Elo) [Amateur]</option>
-                    <option value="1500" data-icon="icon_bot_1500.png" selected>Moyen (1500 Elo) [Joueur de club]</option>
-                    <option value="3000" data-icon="icon_bot_3000.png">Fort (3000 Elo) [Grand Maître]</option>
+                    <option value="250" data-icon="icon_bot_250.png">250 Elo (Débutant)</option>
+                    <option value="500" data-icon="icon_bot_500.png">500 Elo (Novice)</option>
+                    <option value="750" data-icon="icon_bot_750.png">750 Elo (Amateur)</option>
+                    <option value="1000" data-icon="icon_bot_1000.png">1000 Elo (Intermédiaire)</option>
+                    <option value="1250" data-icon="icon_bot_1250.png">1250 Elo (Joueur de club débutant)</option>
+                    <option value="1500" data-icon="icon_bot_1500.png" selected>1500 Elo (Joueur de club confirmé)</option>
+                    <option value="1750" data-icon="icon_bot_1750.png">1750 Elo (Fort joueur de club)</option>
+                    <option value="2000" data-icon="icon_bot_2000.png">2000 Elo (Expert)</option>
+                    <option value="2250" data-icon="icon_bot_2250.png">2250 Elo (Maître National)</option>
+                    <option value="2500" data-icon="icon_bot_2500.png">2500 Elo (Maître International)</option>
+                    <option value="2750" data-icon="icon_bot_2750.png">2750 Elo (Grand Maître)</option>
+                    <option value="3000" data-icon="icon_bot_3000.png">3000 Elo (Super Grand Maître)</option>
                 </select><br><br>
                 
                 <button type="submit">Démarrer la Partie</button>
@@ -67,8 +76,8 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     
     <!-- 2. chess.js (qui fournit l'objet Chess) doit être chargé avant app.js -->
-    <!-- ATTENTION : J'ai mis à jour le chemin CDN pour une version plus stable -->
-    <script src="https://unpkg.com/chess.js@1.0.0-beta.8/chess.js"></script> 
+    <!-- REVENIR À LA VERSION PRÉCÉDENTE QUI EXPOSE Chess GLOBALEMENT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script> 
     
     <!-- 3. chessboard.js doit être chargé avant app.js -->
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
@@ -78,4 +87,3 @@
 
 </body>
 </html>
-
