@@ -11,7 +11,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<style>
+    #debug-container {
+        position: fixed; /* Reste en place même si on fait défiler la page */
+        bottom: 0; /* Ancré en bas */
+        left: 0;
+        width: 100%;
+        height: 200px; /* Hauteur de la console */
+        background-color: #1e1e1e; /* Fond sombre pour l'effet console */
+        color: white;
+        font-family: monospace; /* Police de console */
+        z-index: 1000; /* Assure que la console est au-dessus du reste */
+        overflow-y: scroll; /* Permet de faire défiler les logs */
+        padding: 10px;
+        box-sizing: border-box;
+        border-top: 2px solid #555;
+    }
+    #debug-container h4 {
+        margin: 0 0 10px 0;
+        color: #ddd;
+    }
+    #debug-container .log-line {
+        border-bottom: 1px solid #333;
+        padding: 3px 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    /* Styles pour la coloration des types de logs */
+    .log-line.error { color: red; }
+    .log-line.warn { color: orange; }
+    .log-line.log { color: white; }
+</style>
 
+<div id="debug-container">
+    <h4>Console de Débogage Mobile (API & Client)</h4>
+    <div id="debug"></div>
+</div>
     <div class="container">
             <pre id="debug" style="color:yellow;background:black;z-index:99999;position:fixed;top:0;left:0;max-width:100vw;max-height:30vh;overflow:auto;"></pre>
         <h1>Jouer contre le Bot (Render/FastAPI)</h1>
