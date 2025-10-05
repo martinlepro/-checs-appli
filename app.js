@@ -1,46 +1,65 @@
 // --- Début du code de redirection du console ---
 
 // Fonction pour ajouter un message au div de débogage
+// Sauvegarder les fonctions originales avant de les remplacer
+// (Utile si vous voulez toujours que les logs aillent dans la vraie console AUSSI)
+// const originalConsoleLog = console.log;
+// const originalConsoleWarn = console.warn;
+// const originalConsoleError = console.error;
+
+/**
+ * Ajoute un message formaté au conteneur de débogage sur l'écran.
+ * @param {string} type - 'log', 'warn', ou 'error'.
+ * @param {string} message - Le message principal.
+ * @param {...any} optionalParams - Paramètres additionnels à formater et afficher.
+ */
 function appendToDebugDiv(type, message, ...optionalParams) {
+  // Référence au conteneur des logs
   const debugDiv = document.getElementById('debug');
-  if (debugDiv) {
-    const formatParam = (param) => {
-      // Gérer spécifiquement les objets Error pour afficher leur message et leur stack
-      if (param instanceof Error) {
-        return `Error: ${param.message}\nStack: ${param.stack || 'No stack available'}`;
+  if (!debugDiv) return; // Quitte si le conteneur n'existe pas
+
+  const formatParam = (param) => {
+    // Gérer spécifiquement les objets Error (messages et stack)
+    if (param instanceof Error) {
+      return `Error: ${param.message}\nStack: ${param.stack || 'No stack available'}`;
+    }
+    // Gérer les objets normaux
+    if (typeof param === 'object' && param !== null) {
+      try {
+        // Affiche les objets de manière lisible (format JSON avec indentation)
+        return JSON.stringify(param, null, 2); 
+      } catch (e) {
+        // Solution de secours pour les objets avec références circulaires
+        return String(param); 
       }
-      // Gérer les objets normaux en les convertissant en JSON lisible
-      if (typeof param === 'object' && param !== null) {
-        try {
-          return JSON.stringify(param, null, 2); // Affiche les objets de manière lisible
-        } catch (e) {
-          return String(param); // Solution de secours pour les objets avec références circulaires
-        }
-      }
-      return String(param);
-    };
+    }
+    return String(param);
+  };
 
-    const formattedMessage = [message, ...optionalParams].map(formatParam).join(' ');
+  // Concaténer le message principal et les paramètres optionnels
+  const formattedMessage = [message, ...optionalParams].map(formatParam).join(' ');
 
-    const line = document.createElement('div');
-    // Style de base pour différents types de logs
-    line.style.color = type === 'error' ? 'red' : (type === 'warn' ? 'orange' : 'white');
-    line.style.borderBottom = '1px solid #333'; // Ajoute un séparateur pour la lisibilité
-    line.style.padding = '5px 0';
-    line.style.whiteSpace = 'pre-wrap'; // Préserve la mise en forme (sauts de ligne)
-    line.style.wordBreak = 'break-all'; // Coupe les longs mots si nécessaire
-
-    line.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${formattedMessage}`;
-    debugDiv.appendChild(line);
-    debugDiv.scrollTop = debugDiv.scrollHeight; // Fait défiler automatiquement vers le bas
-  }
+  // Créer l'élément de ligne
+  const line = document.createElement('div');
+  line.classList.add('log-line', type); // Ajoute la classe de base et la classe de type pour le style
+  
+  // Le contenu de la ligne : [TYPE] HH:MM:SS: Message
+  line.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${formattedMessage}`;
+  
+  // Ajouter la ligne au conteneur
+  debugDiv.appendChild(line);
+  
+  // Fait défiler automatiquement vers le bas pour voir le log le plus récent
+  debugDiv.scrollTop = debugDiv.scrollHeight; 
 }
 
-// Redirection des méthodes console natives vers notre div de débogage
-// Vous pouvez décommenter les lignes 'originalConsoleLog' si vous voulez aussi voir les logs dans la vraie console du navigateur
+// =========================================================
+// REDIRECTION DES MÉTHODES CONSOLE NATIVES
+// =========================================================
+
 console.log = function(message, ...optionalParams) {
   appendToDebugDiv('log', message, ...optionalParams);
-  // originalConsoleLog(message, ...optionalParams);
+  // originalConsoleLog(message, ...optionalParams); // Décommenter si vous voulez aussi logger dans la console native
 };
 
 console.warn = function(message, ...optionalParams) {
@@ -53,12 +72,22 @@ console.error = function(message, ...optionalParams) {
   // originalConsoleError(message, ...optionalParams);
 };
 
-// Gère les erreurs JavaScript non capturées dans le navigateur
+// Gère les erreurs JavaScript non capturées (les plus critiques)
 window.onerror = function(msg, url, line, col, error) {
   const errorText = `Erreur JS non capturée : ${msg}\nLigne: ${line}\nCol: ${col}\nURL: ${url}\n${error ? error.stack : ""}`;
   appendToDebugDiv('error', errorText);
-  return true; // Empêche le comportement par défaut du navigateur (par exemple, le logging dans sa console)
+  // Retourner true empêche le comportement par défaut du navigateur
+  return true; 
 };
+
+// Gère les rejets de promesses non gérées (très fréquent avec les appels fetch/API)
+window.addEventListener('unhandledrejection', (event) => {
+  let errorMsg = `Rejet de Promesse non géré : ${event.reason}`;
+  if (event.reason && event.reason.message) {
+      errorMsg = event.reason.message;
+  }
+  appendToDebugDiv('error', errorMsg, event.reason);
+});
 
 // --- Fin du code de redirection du console ---
 
