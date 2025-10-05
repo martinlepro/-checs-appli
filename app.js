@@ -1,6 +1,3 @@
-// --- Début du code de redirection du console ---
-
-// Fonction pour ajouter un message au div de débogage
 // Sauvegarder les fonctions originales avant de les remplacer
 // (Utile si vous voulez toujours que les logs aillent dans la vraie console AUSSI)
 // const originalConsoleLog = console.log;
@@ -88,8 +85,6 @@ window.addEventListener('unhandledrejection', (event) => {
   }
   appendToDebugDiv('error', errorMsg, event.reason);
 });
-
-// --- Fin du code de redirection du console ---
 
 // Message de confirmation que les overrides sont chargés
 console.log("Console overrides chargés ! Les logs devraient apparaître dans le div #debug.");
