@@ -164,8 +164,13 @@ async function onDrop (source, target) {
     }
     
     // Le coup est légal localement, mais nous attendons la confirmation du serveur
-    game.undo(); // Annule le coup local pour le faire uniquement après la confirmation du serveur
-    console.log(`Coup (${temp_move.uci}) localement valide, annulé temporairement en attendant la confirmation serveur.`);
+    const undoResult = game.undo(); // Annule le coup local pour le faire uniquement après la confirmation du serveur
+    if (undoResult) {
+        console.log(`Coup (${temp_move.uci}) localement valide, annulé temporairement en attendant la confirmation serveur.`);
+    } else {
+        console.error("Impossible d'annuler le coup. État du jeu peut être incohérent.");
+        return 'snapback';
+    }
 
     // Envoyer le coup au serveur
     try {
@@ -207,7 +212,13 @@ async function onDrop (source, target) {
             const bot_move = game.move(data.bot_move);
             if (bot_move === null) {
                 console.error("Le serveur a retourné un coup illégal pour le bot:", data.bot_move, "FEN actuel:", game.fen());
-                // On laisse le jeu dans l'état après le coup humain pour la détection du problème
+                // Annuler le coup humain pour restaurer la cohérence
+                game.undo();
+                board.position(game.fen());
+                updateStatus("Erreur: Le serveur a retourné un coup illégal pour le bot.");
+                isBotPlaying = false;
+                $('#loading-overlay').hide();
+                return 'snapback';
             }
             // board.move(data.bot_move) va appeler onSnapEnd
         }
@@ -220,7 +231,7 @@ async function onDrop (source, target) {
         console.log("Tour terminé. Bot a joué (si applicable) et plateau mis à jour.");
 
     } catch (error) {
-        console.error('Erreur lors de l’envoi du coup au serveur ou traitement de la réponse:', error);
+        console.error('Erreur lors de l\'envoi du coup au serveur ou traitement de la réponse:', error);
         
         // Le coup est refusé par le serveur : restaure l'ancienne position
         board.position(game.fen(), false); // 'false' force un snapback
