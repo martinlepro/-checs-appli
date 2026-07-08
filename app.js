@@ -95,7 +95,7 @@ const SERVER_URL = 'https://echecs-serveur.onrender.com';
 
 // --- État de l'application ---
 let board = null;
-let game = new Chess();
+let game = new Chess.Chess();
 let gameId = null;
 let playerId = null;
 let botLevel = 1500;
@@ -109,7 +109,8 @@ const config = {
     onDrop: onDrop,
     onSnapEnd: onSnapEnd,
     onMoveEnd: onMoveEnd,
-    orientation: 'white' // L'humain est toujours les Blancs
+    orientation: 'white', // L'humain est toujours les Blancs
+    pieceTheme: 'https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/img/chesspieces/wikipedia/{piece}.png' // URL des pièces
 };
 
 // --- Initialisation ---
@@ -135,7 +136,7 @@ $(document).ready(function() {
 function onDragStart (source, piece, position, orientation) {
     console.log(`Début du glisser-déposer: ${piece} de ${source}`);
     // Si la partie est terminée (correction), ou si le bot joue, ou si ce n'est pas le tour des Blancs (l'humain)
-    if (game.game_over() || isBotPlaying || game.turn() === 'b') {
+    if (game.isGameOver() || isBotPlaying || game.turn() === 'b') {
         console.warn("Mouvement interdit: partie terminée, bot joue, ou ce n'est pas le tour des Blancs.");
         return false;
     }
@@ -166,7 +167,7 @@ async function onDrop (source, target) {
     // Le coup est légal localement, mais nous attendons la confirmation du serveur
     const undoResult = game.undo(); // Annule le coup local pour le faire uniquement après la confirmation du serveur
     if (undoResult) {
-        console.log(`Coup (${temp_move.uci}) localement valide, annulé temporairement en attendant la confirmation serveur.`);
+        console.log(`Coup (${temp_move.san}) localement valide, annulé temporairement en attendant la confirmation serveur.`);
     } else {
         console.error("Impossible d'annuler le coup. État du jeu peut être incohérent.");
         return 'snapback';
@@ -181,7 +182,7 @@ async function onDrop (source, target) {
         const requestBody = { // <-- NOUVEAU : Log le corps de la requête
             game_id: gameId,
             player_id: playerId,
-            uci_move: temp_move.uci
+            uci_move: temp_move.lan // Utilise LAN au lieu de UCI pour chess.js 1.0
         };
         console.log("Corps de la requête POST /game/move envoyé :", requestBody);
 
@@ -204,7 +205,7 @@ async function onDrop (source, target) {
         // 2. Exécution du coup du joueur (confirmé par le serveur)
         game.move(temp_move);
         board.position(game.fen()); // Mise à jour du plateau pour le coup humain
-        console.log(`Coup humain (${temp_move.uci}) exécuté et confirmé par le serveur.`);
+        console.log(`Coup humain (${temp_move.san}) exécuté et confirmé par le serveur.`);
         
         // 3. Animation et exécution du coup du bot (si présent)
         if (data.bot_move) {
@@ -339,18 +340,18 @@ function updateStatus (message = null) {
         moveColor = 'Noirs';
     }
 
-    // CORRECTIONS ICI
-    if (game.in_checkmate()) {
+    // CORRECTIONS ICI - Méthodes mises à jour pour chess.js 1.0
+    if (game.isCheckmate()) {
         status = 'PARTIE TERMINÉE : ' + moveColor + ' est en échec et mat.';
         $('#reset-button').show();
         console.log("Partie terminée: Échec et mat !");
-    } else if (game.in_draw()) {
+    } else if (game.isDraw()) {
         status = 'PARTIE TERMINÉE : Nulle.';
         $('#reset-button').show();
         console.log("Partie terminée: Nulle !");
     } else {
         status = `C'est au tour des ${moveColor} de jouer.`;
-        if (game.in_check()) {
+        if (game.isCheck()) {
             status = `<span style="color: #e67e22;">${status} (ATTENTION : Échec !)</span>`;
             console.warn("Partie en cours: Le joueur actuel est en échec !");
         } else {
